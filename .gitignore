@@ -1,0 +1,10 @@
+# Dependencies
+node_modules/
+
+# Samples and local test files
+sample/
+*.unitypackage
+
+# OS files
+.DS_Store
+Thumbs.db
