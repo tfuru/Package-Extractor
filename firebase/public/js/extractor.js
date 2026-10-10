@@ -70,26 +70,28 @@ export class PackageExtractor {
         const part = parts[i];
         const isLast = i === parts.length - 1;
 
-        if (isLast && !asset.isDirectory) {
+        if (!current.children) {
+          current.children = new Map();
+          current.isDirectory = true;
+        }
+
+        if (!current.children.has(part)) {
           current.children.set(part, {
             name: part,
-            path: asset.path,
-            isDirectory: false,
-            asset: asset,
-            children: null
+            path: parts.slice(0, i + 1).join('/'),
+            isDirectory: isLast ? asset.isDirectory : true,
+            children: new Map(),
+            asset: isLast ? asset : null
           });
-        } else {
-          if (!current.children.has(part)) {
-            current.children.set(part, {
-              name: part,
-              path: parts.slice(0, i + 1).join('/'),
-              isDirectory: true,
-              children: new Map(),
-              asset: isLast ? asset : null
-            });
+        } else if (isLast) {
+          const existing = current.children.get(part);
+          existing.asset = asset;
+          if (!asset.isDirectory) {
+            existing.isDirectory = false;
           }
-          current = current.children.get(part);
         }
+
+        current = current.children.get(part);
       }
     }
 
