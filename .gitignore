@@ -5,6 +5,10 @@ node_modules/
 sample/
 *.unitypackage
 
+# Firebase cache
+.firebase/
+firebase/.firebase/
+
 # OS files
 .DS_Store
 Thumbs.db
