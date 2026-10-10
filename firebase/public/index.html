@@ -1,0 +1,146 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Package Extractor - Unity Package をブラウザで安全・高速に展開</title>
+  <meta name="description" content="ブラウザ上で .unitypackage を展開し、フォルダ構造を維持したまま中身のアセット（画像、3Dモデル、スクリプト等）をプレビュー・ZIPダウンロードできるWebツールです。">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="css/style.css">
+</head>
+<body>
+  <div class="app-container">
+    <!-- ヘッダー -->
+    <header class="app-header">
+      <div class="header-brand">
+        <div class="brand-icon">📦</div>
+        <div>
+          <h1>Package Extractor</h1>
+          <p class="brand-tagline">Unity Package Browser Extractor</p>
+        </div>
+      </div>
+      <div class="header-actions">
+        <span class="privacy-badge" title="すべての処理はお手元のブラウザ内で完結します">🔒 クライアントサイド完結 (安全)</span>
+      </div>
+    </header>
+
+    <!-- メインコンテンツ -->
+    <main class="app-main">
+      <!-- アップロードエリア（初期表示） -->
+      <section id="drop-zone" class="drop-zone">
+        <input type="file" id="file-input" accept=".unitypackage" class="file-input-hidden">
+        <div class="drop-zone-content">
+          <div class="upload-icon">📁</div>
+          <h2>.unitypackage をドラッグ＆ドロップ</h2>
+          <p>またはファイルを選択してください</p>
+          <button id="browse-btn" class="btn btn-primary" type="button">ファイルを選択</button>
+          <p class="drop-hint">※ ファイルが外部サーバーに送信されることはありません</p>
+        </div>
+      </section>
+
+      <!-- プログレスバー（解析中表示） -->
+      <div id="progress-container" class="progress-container hidden">
+        <div class="spinner"></div>
+        <h3 id="progress-status">パッケージを解析中...</h3>
+        <p id="progress-detail">準備中</p>
+        <div class="progress-bar-bg">
+          <div id="progress-bar" class="progress-bar-fill"></div>
+        </div>
+      </div>
+
+      <!-- パッケージ解析完了後のビューワー -->
+      <section id="viewer-container" class="viewer-container hidden">
+        <!-- パッケージ概要バー -->
+        <div class="package-info-bar">
+          <div class="info-group">
+            <span class="info-label">パッケージ名:</span>
+            <span id="pkg-name" class="info-value">-</span>
+          </div>
+          <div class="info-group">
+            <span class="info-label">アセット数:</span>
+            <span id="pkg-count" class="info-value">0</span>
+          </div>
+          <div class="info-group">
+            <span class="info-label">合計サイズ:</span>
+            <span id="pkg-size" class="info-value">0 MB</span>
+          </div>
+          <div class="bar-actions">
+            <button id="reset-btn" class="btn btn-secondary btn-sm" type="button">別のファイルを開く</button>
+            <button id="download-zip-btn" class="btn btn-success btn-sm" type="button">
+              <span>📥</span> 全ファイルをZIPで保存
+            </button>
+          </div>
+        </div>
+
+        <!-- ツールバー（フィルタ・検索） -->
+        <div class="viewer-toolbar">
+          <div class="search-box">
+            <span class="search-icon">🔍</span>
+            <input type="text" id="search-input" placeholder="アセット名またはパスで検索...">
+            <button id="clear-search-btn" class="btn-clear hidden" type="button">✕</button>
+          </div>
+          <div class="filter-group">
+            <span class="filter-label">種類:</span>
+            <button class="filter-btn active" data-type="all">すべて</button>
+            <button class="filter-btn" data-type="textures">画像 / テクスチャ</button>
+            <button class="filter-btn" data-type="models">3Dモデル</button>
+            <button class="filter-btn" data-type="scripts">スクリプト</button>
+            <button class="filter-btn" data-type="audio">音声</button>
+            <button class="filter-btn" data-type="other">その他</button>
+          </div>
+        </div>
+
+        <!-- ワークスペース（左ツリー / 中央アセット一覧 / 右プレビュー） -->
+        <div class="viewer-workspace">
+          <!-- 左カラム: フォルダツリー -->
+          <aside class="sidebar-tree">
+            <div class="sidebar-header">
+              <h3>ディレクトリ</h3>
+              <div class="tree-controls">
+                <button id="expand-all-btn" class="btn-icon" title="すべて展開">＋</button>
+                <button id="collapse-all-btn" class="btn-icon" title="すべて折りたたむ">－</button>
+              </div>
+            </div>
+            <div id="tree-container" class="tree-content"></div>
+          </aside>
+
+          <!-- 中央カラム: アセットリスト -->
+          <section class="asset-list-section">
+            <div class="list-header">
+              <div class="header-col col-name">名前 / パス</div>
+              <div class="header-col col-type">形式</div>
+              <div class="header-col col-size">サイズ</div>
+              <div class="header-col col-action">操作</div>
+            </div>
+            <div id="asset-list" class="asset-list"></div>
+            <div id="no-results" class="no-results hidden">一致するアセットは見つかりませんでした</div>
+          </section>
+
+          <!-- 右カラム: プレビューパネル -->
+          <aside id="preview-panel" class="preview-panel">
+            <div class="preview-header">
+              <h3>プレビュー</h3>
+              <button id="close-preview-btn" class="btn-icon" title="閉じる">✕</button>
+            </div>
+            <div id="preview-body" class="preview-body">
+              <div class="preview-placeholder">アセットを選択するとプレビューが表示されます</div>
+            </div>
+          </aside>
+        </div>
+      </section>
+    </main>
+
+    <!-- フッター -->
+    <footer class="app-footer">
+      <p>Package Extractor &copy; 2026 - Client-side UnityPackage Extractor</p>
+    </footer>
+  </div>
+
+  <!-- fflate (CDN) -->
+  <script src="https://cdn.jsdelivr.net/npm/fflate@0.8.2/umd/index.js"></script>
+  <!-- メインスクリプト -->
+  <script type="module" src="js/app.js"></script>
+</body>
+</html>
